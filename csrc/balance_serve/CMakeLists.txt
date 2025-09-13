@@ -1,3 +1,8 @@
+option(KTRANSFORMERS_USE_NPU                 "ktransformers: use NPU"                           OFF)
+
+if(KTRANSFORMERS_USE_NPU)
+    add_definitions(-DKTRANSFORMERS_USE_NPU=1)
+endif()
 
 cmake_minimum_required(VERSION 3.21)
 find_program(GCC_COMPILER NAMES g++-13 g++-12 g++-11 g++ REQUIRED)
@@ -54,9 +59,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party)
 set(THIRD_PARTY_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party)
-add_subdirectory(${THIRD_PARTY_DIR}/prometheus-cpp ${THIRD_PARTY_BUILD_DIR}/prometheus-cpp EXCLUDE_FROM_ALL)
-add_subdirectory(${THIRD_PARTY_DIR}/xxHash/cmake_unofficial ${THIRD_PARTY_BUILD_DIR}/xxHash EXCLUDE_FROM_ALL)
-set_target_properties(xxhash PROPERTIES POSITION_INDEPENDENT_CODE ON)
+if(KTRANSFORMERS_USE_NPU)
+    file(COPY "${THIRD_PARTY_DIR}/nlohmann/" DESTINATION "${THIRD_PARTY_BUILD_DIR}/nlohmann")
+else()
+    add_subdirectory(${THIRD_PARTY_DIR}/prometheus-cpp ${THIRD_PARTY_BUILD_DIR}/prometheus-cpp EXCLUDE_FROM_ALL)
+    add_subdirectory(${THIRD_PARTY_DIR}/xxHash/cmake_unofficial ${THIRD_PARTY_BUILD_DIR}/xxHash EXCLUDE_FROM_ALL)
+    set_target_properties(xxhash PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
 
 # add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/prometheus-cpp ${CMAKE_CURRENT_BINARY_DIR}/third_party/prometheus-cpp)
 set(SPDLOG_DIR ${THIRD_PARTY_DIR}/spdlog)
@@ -65,7 +74,11 @@ set(FMT_DIR ${THIRD_PARTY_DIR}/fmt)
 set(KVC2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/kvc2/src)
 
 include_directories(${THIRD_PARTY_DIR})
-
+if(KTRANSFORMERS_USE_NPU)
+    set(ASCEND_HOME_PATH "$ENV{ASCEND_HOME_PATH}")
+    message(STATUS "ASCEND_HOME_PATH is ${ASCEND_HOME_PATH}")
+    include_directories(${ASCEND_HOME_PATH}/include)
+endif()
 add_subdirectory(${THIRD_PARTY_DIR}/pybind11 ${THIRD_PARTY_BUILD_DIR}/pybind11)
 
 execute_process(
@@ -80,6 +93,18 @@ message(STATUS "Found PyTorch at: ${TORCH_INSTALL_PREFIX}")
 find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
 find_package(Torch REQUIRED PATHS "${TORCH_INSTALL_PREFIX}/share/cmake/Torch" NO_DEFAULT_PATH)
 
+if(KTRANSFORMERS_USE_NPU)
+    link_directories(${TORCH_INSTALL_PREFIX}/../torch.libs)
+
+    # find torch_npu
+    execute_process(
+            COMMAND python -c "import torch; import torch_npu; print(torch_npu.__path__[0])"
+            OUTPUT_VARIABLE TORCH_NPU_PATH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    message(STATUS "Found PTA at: ${TORCH_NPU_PATH}")
+    find_library(PTA_LIBRARY torch_npu PATH "${TORCH_NPU_PATH}/lib")
+    
 add_subdirectory(kvc2)
 add_subdirectory(sched)
 

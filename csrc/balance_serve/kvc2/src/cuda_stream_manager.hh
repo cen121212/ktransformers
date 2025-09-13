@@ -8,7 +8,6 @@
  */
 #pragma once
 
-#include <cuda_runtime.h>
 #include <atomic>
 #include <functional>
 #include <memory>
