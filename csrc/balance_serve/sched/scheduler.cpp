@@ -29,7 +29,7 @@ void Settings::auto_derive() {
   gpu_device_count = gpu_device_id.size();
   
   // 设备初始化分支
-  if (device_type == DeviceType::NPU) {
+  #ifdef KTRANSFORMERS_USE_NPU
     size_t npu_count = c10_npu::device_count();
     SPDLOG_INFO("Number of available NPUs: {}, want {}", npu_count, gpu_device_count);
     if (npu_count < gpu_device_count) {
@@ -40,8 +40,7 @@ void Settings::auto_derive() {
       std::string device_str = "npu:" + std::to_string(gpu_device_id[i]);
       devices.push_back(torch::Device(device_str));
     }
-  } 
-  else { // GPU模式
+  #else
     if (torch::cuda::is_available()) {
       size_t gpu_count = torch::cuda::device_count();
       SPDLOG_INFO("Number of available GPUs: {}, want {}", gpu_count, gpu_device_count);
@@ -56,7 +55,7 @@ void Settings::auto_derive() {
       SPDLOG_ERROR("CUDA is not available on this system.");
       exit(0);
     }
-  }
+  #endif
 
   if (model_settings.num_k_heads % gpu_device_count != 0) {
     SPDLOG_ERROR("num_k_heads {} is not divisible by gpu_device_count {}",
