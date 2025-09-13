@@ -55,12 +55,10 @@ message(STATUS "CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
 add_library(async_store async_store.cpp)
 target_include_directories(async_store PRIVATE ${THIRD_PARTY_DIR}/nlohmann/single_include)
 target_include_directories(async_store PRIVATE ${THIRD_PARTY_DIR}/spdlog/include)
-if(KTRANSFORMERS_USE_NPU)
-    target_link_libraries(async_store PUBLIC pthread)
-else()
-    target_include_directories(async_store PRIVATE ${THIRD_PARTY_DIR}/PhotonLibOS/include)
-    target_link_libraries(async_store PUBLIC photon_static pthread)
-endif()
+
+target_include_directories(async_store PRIVATE ${THIRD_PARTY_DIR}/PhotonLibOS/include)
+target_link_libraries(async_store PUBLIC photon_static pthread)
+
 
 # cuda_stream_manager
 add_library(cuda_stream_manager cuda_stream_manager.cpp)
